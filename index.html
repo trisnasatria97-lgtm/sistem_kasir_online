@@ -7,6 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   
   <style>
     /* Styling khusus tampilan cetak (Print CSS Fix) */
@@ -41,10 +43,12 @@
   <div id="nav-header" class="bg-indigo-900 text-white p-3 shadow-md no-print sticky top-0 z-50 border-b border-indigo-800 transition-colors duration-300">
     <div class="max-w-7xl mx-auto flex justify-between items-center">
       <div class="flex items-center space-x-2">
-        <i class="fa-solid fa-store text-xl text-accent-color"></i>
-        <h1 class="font-bold text-lg leading-tight tracking-wide">BS-GROUP</h1>
-        <p class="text-xs text-slate-100"> MITRA NIAGA AKTIF </p>
-      </div>
+  <i class="fa-solid fa-store text-xl text-accent-color"></i>
+  <div class="flex flex-col">
+    <h1 class="font-bold text-lg leading-tight tracking-wide">BS-POS (Borneo Synergi Point of Sale) </h1>
+    <p class="text-[10px] text-slate-300 tracking-wider">MITRA NIAGA AKTIF</p>
+  </div>
+</div>
       
       <div class="flex items-center space-x-3">
         <div class="hidden md:flex space-x-2">
@@ -229,6 +233,27 @@
           </div>
         </div>
 
+        <!-- Grafik Top 5 Stok Terbanyak & Tersedikit -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700">
+            <h3 class="text-xs font-bold text-emerald-400 mb-3 flex items-center">
+              <i class="fa-solid fa-chart-bar mr-1.5"></i> Top 5 Stok Terbanyak
+            </h3>
+            <div class="relative h-48 w-full">
+              <canvas id="chart-top-stock"></canvas>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700">
+            <h3 class="text-xs font-bold text-rose-400 mb-3 flex items-center">
+              <i class="fa-solid fa-chart-bar mr-1.5"></i> Top 5 Stok Tersedikit
+            </h3>
+            <div class="relative h-48 w-full">
+              <canvas id="chart-low-stock"></canvas>
+            </div>
+          </div>
+        </div>
+
         <div>
           <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center justify-between">
             <span>Daftar Stok Barang di Toko</span>
@@ -295,6 +320,16 @@
           </div>
         </div>
 
+<!-- Grafik Top 10 Produk Terlaris -->
+        <div class="bg-slate-900/60 p-5 rounded-xl border border-slate-700 my-6">
+          <h3 class="text-sm font-bold text-indigo-400 mb-4 flex items-center">
+            <i class="fa-solid fa-fire mr-2 text-amber-500"></i> Top 10 Produk Terlaris
+          </h3>
+          <div class="relative h-64 w-full">
+            <canvas id="chart-top-sales"></canvas>
+          </div>
+        </div>
+
         <div>
           <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center justify-between">
             <span>Rincian Transaksi Filter (<span id="dash-filter-label">Hari Ini</span>)</span>
@@ -356,7 +391,7 @@
   </div>
 
   <!-- Template Cetak Struk (Tampil hanya saat Print) -->
-  <div id="receipt-print">
+  <div id="receipt-print" class="hidden">
     <div style="text-align: center; margin-bottom: 10px;">
       <h2 style="margin: 0; font-size: 16px; font-weight: bold;" id="rc-shop-name">BORNEO SYNEGRI GROUP</h2>
       <p style="margin: 2px 0; font-size: 11px;" id="rc-shop-address">Bukti pembayaran resmi pembelanjaan</p>
@@ -409,6 +444,9 @@
   <!-- Logika Aplikasi (JavaScript) -->
   <script>
     const DESTINATION_EMAIL = "borneosynergigroup@gmail.com";
+    let chartTopStock = null;
+let chartLowStock = null;
+let chartTopSales = null;
 
     let inventoryProducts = JSON.parse(localStorage.getItem('kasir_inventory')) || [
       { id: 'PROD-1', name: 'Kopi Susu Gula Aren', image: '', hpp: 14000, price: 18000, stock: 25, minStock: 5 },
@@ -465,11 +503,30 @@
         navHeader.className = `${themeConfig.navBg} text-white p-3 shadow-md no-print sticky top-0 z-50 border-b ${themeConfig.navBorder} transition-colors duration-300`;
         bottomNav.className = `md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around py-2 z-50 no-print shadow-lg transition-colors duration-300`;
         
+        // Ubah background & garis border kartu utama
         document.querySelectorAll('.card-box').forEach(el => {
-          el.className = el.className.replace(/bg-slate-800/g, 'bg-white').replace(/border-slate-700/g, 'border-slate-200').replace(/text-slate-100/g, 'text-slate-800');
+          el.classList.remove('bg-slate-800', 'border-slate-700');
+          el.classList.add('bg-white', 'border-slate-200', 'shadow-sm');
         });
+        
+        // Ubah input field
         document.querySelectorAll('.input-field').forEach(el => {
-          el.className = el.className.replace(/bg-slate-900/g, 'bg-slate-50').replace(/border-slate-700/g, 'border-slate-300').replace(/text-slate-100/g, 'text-slate-800');
+          el.classList.remove('bg-slate-900', 'border-slate-700', 'text-slate-100');
+          el.classList.add('bg-slate-50', 'border-slate-300', 'text-slate-800');
+        });
+
+        // PERBAIKAN: Ubah warna judul, label, dan teks penjelas agar kontras di Light Mode
+        document.querySelectorAll('h2, h3, label, .text-slate-200, .text-slate-300, .text-slate-400').forEach(el => {
+          if (!el.closest('#nav-header')) {
+            el.classList.remove('text-slate-200', 'text-slate-300', 'text-slate-400');
+            el.classList.add('text-slate-700');
+          }
+        });
+
+        // PERBAIKAN: Ubah latar belakang kartu katalog produk cepat agar terang
+        document.querySelectorAll('#quick-products button').forEach(el => {
+          el.classList.remove('bg-slate-900', 'border-slate-700');
+          el.classList.add('bg-slate-50', 'border-slate-200');
         });
       } else {
         body.className = "bg-slate-900 font-sans text-slate-100 pb-20 lg:pb-0 min-h-screen transition-colors duration-300";
@@ -477,16 +534,34 @@
         bottomNav.className = `md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 flex justify-around py-2 z-50 no-print shadow-lg transition-colors duration-300`;
         
         document.querySelectorAll('.card-box').forEach(el => {
-          el.className = el.className.replace(/bg-white/g, 'bg-slate-800').replace(/border-slate-200/g, 'border-slate-700').replace(/text-slate-800/g, 'text-slate-100');
+          el.classList.remove('bg-white', 'border-slate-200');
+          el.classList.add('bg-slate-800', 'border-slate-700');
         });
+        
         document.querySelectorAll('.input-field').forEach(el => {
-          el.className = el.className.replace(/bg-slate-50/g, 'bg-slate-900').replace(/border-slate-300/g, 'border-slate-700').replace(/text-slate-800/g, 'text-slate-100');
+          el.classList.remove('bg-slate-50', 'border-slate-300', 'text-slate-800');
+          el.classList.add('bg-slate-900', 'border-slate-700', 'text-slate-100');
+        });
+
+        document.querySelectorAll('h2, h3, label, .text-slate-700').forEach(el => {
+          if (!el.closest('#nav-header')) {
+            el.classList.remove('text-slate-700');
+            el.classList.add('text-slate-200');
+          }
+        });
+
+        document.querySelectorAll('#quick-products button').forEach(el => {
+          el.classList.remove('bg-slate-50', 'border-slate-200');
+          el.classList.add('bg-slate-900', 'border-slate-700');
         });
       }
 
       document.querySelectorAll('.text-accent').forEach(el => {
         el.className = el.className.replace(/text-\w+-400/g, themeConfig.textAccent);
       });
+
+      // Refresh katalog produk agar warna teks di dalam kartu menyesuaikan tema baru
+      renderQuickProducts();
     }
 
     function switchTab(tab) {
@@ -886,6 +961,7 @@
 
       if (inventoryProducts.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">Belum ada data inventaris.</td></tr>`;
+        renderStockCharts();
         return;
       }
 
@@ -907,6 +983,102 @@
           </tr>
         `;
       });
+
+      renderStockCharts();
+    }
+
+    // Fungsi Render Grafik Top 5 Terbanyak & Tersedikit
+    function renderStockCharts() {
+      if (typeof Chart === 'undefined') return;
+
+      // Daftarkan plugin DataLabels ke Chart.js
+      if (typeof ChartDataLabels !== 'undefined') {
+        Chart.register(ChartDataLabels);
+      }
+
+      const isLight = currentThemeMode === 'light';
+      const textColor = isLight ? '#334155' : '#cbd5e1';
+      const gridColor = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)';
+
+      // Sort Top 5 Terbanyak
+      const sortedHigh = [...inventoryProducts].sort((a, b) => b.stock - a.stock).slice(0, 5);
+      // Sort Top 5 Tersedikit
+      const sortedLow = [...inventoryProducts].sort((a, b) => a.stock - b.stock).slice(0, 5);
+
+      if (chartTopStock) chartTopStock.destroy();
+      if (chartLowStock) chartLowStock.destroy();
+
+      const ctxTop = document.getElementById('chart-top-stock')?.getContext('2d');
+      const ctxLow = document.getElementById('chart-low-stock')?.getContext('2d');
+
+      const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          // Konfigurasi Angka di Atas Grafik
+          datalabels: {
+            anchor: 'end',
+            align: 'start',
+            offset: -20,
+            color: '#ffffff',
+            font: {
+              weight: 'bold',
+              size: 11
+            },
+            formatter: function(value) {
+              return value;
+            }
+          }
+        },
+        scales: {
+          x: { 
+            ticks: { color: textColor, font: { size: 10 } }, 
+            grid: { display: false } 
+          },
+          y: { 
+            ticks: { color: textColor, font: { size: 10 }, stepSize: 1 }, 
+            grid: { color: gridColor },
+            grace: '15%' // Memberikan ruang di atas grafik agar angka tidak terpotong
+          }
+        }
+      };
+
+      if (ctxTop) {
+        chartTopStock = new Chart(ctxTop, {
+          type: 'bar',
+          data: {
+            labels: sortedHigh.map(p => p.name),
+            datasets: [{
+              label: 'Jumlah Stok',
+              data: sortedHigh.map(p => p.stock),
+              backgroundColor: 'rgba(16, 185, 129, 0.85)',
+              borderColor: '#10b981',
+              borderWidth: 1,
+              borderRadius: 6
+            }]
+          },
+          options: commonOptions
+        });
+      }
+
+      if (ctxLow) {
+        chartLowStock = new Chart(ctxLow, {
+          type: 'bar',
+          data: {
+            labels: sortedLow.map(p => p.name),
+            datasets: [{
+              label: 'Jumlah Stok',
+              data: sortedLow.map(p => p.stock),
+              backgroundColor: 'rgba(244, 63, 94, 0.85)',
+              borderColor: '#f43f5e',
+              borderWidth: 1,
+              borderRadius: 6
+            }]
+          },
+          options: commonOptions
+        });
+      }
     }
 
     function setFilter(filter) {
@@ -920,6 +1092,78 @@
         }
       });
       renderDashboard();
+    }
+
+    function renderTopSalesChart(transactions) {
+      if (typeof Chart === 'undefined') return;
+
+      // Hitung total quantity terjual per produk berdasarkan transaksi yang di-filter
+      const productSales = {};
+
+      transactions.forEach(tx => {
+        if (tx.items && Array.isArray(tx.items)) {
+          tx.items.forEach(item => {
+            productSales[item.name] = (productSales[item.name] || 0) + item.qty;
+          });
+        }
+      });
+
+      // Sort & ambil Top 10 produk terbanyak
+      const sortedProducts = Object.keys(productSales)
+        .map(name => ({ name, qty: productSales[name] }))
+        .sort((a, b) => b.qty - a.qty)
+        .slice(0, 10);
+
+      const isLight = currentThemeMode === 'light';
+      const textColor = isLight ? '#334155' : '#cbd5e1';
+      const gridColor = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)';
+
+      if (chartTopSales) chartTopSales.destroy();
+
+      const ctx = document.getElementById('chart-top-sales')?.getContext('2d');
+      if (!ctx) return;
+
+      // Menggunakan grafik tipe horizontal bar (indexAxis: 'y') agar nama produk panjang mudah dibaca
+      chartTopSales = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: sortedProducts.map(p => p.name),
+          datasets: [{
+            label: 'Terjual (Qty)',
+            data: sortedProducts.map(p => p.qty),
+            backgroundColor: 'rgba(99, 102, 241, 0.85)', // Warna Indigo
+            borderColor: '#6366f1',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y', // Menjadikan grafik menyamping (Horizontal)
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              anchor: 'end',
+              align: 'end',
+              color: textColor,
+              font: { weight: 'bold', size: 11 },
+              formatter: function(value) { return value + ' pcs'; }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: textColor, font: { size: 10 }, precision: 0 },
+              grid: { color: gridColor },
+              grace: '15%'
+            },
+            y: {
+              ticks: { color: textColor, font: { size: 11 } },
+              grid: { display: false }
+            }
+          }
+        }
+      });
     }
 
     function getFilteredTransactions() {
@@ -962,7 +1206,7 @@
         renderHistoryList();
         return;
       }
-
+      
       filtered.forEach(trx => {
         let itemDesc = trx.items.map(i => `${i.name} (${i.qty}x)`).join(', ');
         tbody.innerHTML += `
@@ -975,6 +1219,7 @@
         `;
       });
       renderHistoryList();
+      renderTopSalesChart(filtered);
     }
 
     function renderHistoryList() {
@@ -1017,6 +1262,7 @@
       }
     }
 
+    // FUNGSI BARU: Export Data Transaksi ke Excel Terperinci Sesuai Template
     function exportToExcel() {
       const filtered = getFilteredTransactions();
       if (filtered.length === 0) {
@@ -1024,20 +1270,53 @@
         return;
       }
 
-      let dataToExcel = filtered.map(t => ({
-        'ID Transaksi': t.id,
-        'Waktu': t.date,
-        'Kasir': t.cashier,
-        'Rincian Belanja': t.items.map(i => `${i.name} (${i.qty}x)`).join(', '),
-        'Total Belanja (Rp)': t.total,
-        'Bayar (Rp)': t.pay,
-        'Kembalian (Rp)': t.change
-      }));
+      let dataToExcel = [];
+
+      filtered.forEach(t => {
+        t.items.forEach(i => {
+          let stockInfo = '-';
+          if (i.prodId) {
+            const prod = inventoryProducts.find(p => p.id === i.prodId);
+            if (prod) stockInfo = prod.stock;
+          }
+
+          dataToExcel.push({
+            'ID Transaksi': t.id,
+            'Tanggal & Waktu': t.date,
+            'Kasir': t.cashier,
+            'Nama Barang': i.name,
+            'Harga Satuan (Rp)': i.price,
+            'Jumlah (Pcs)': i.qty,
+            'Subtotal Item (Rp)': i.price * i.qty,
+            'Total Belanja (Rp)': t.total,
+            'Jumlah Bayar (Rp)': t.pay,
+            'Kembalian (Rp)': t.change,
+            'sisa stok barang': stockInfo
+          });
+        });
+      });
 
       const worksheet = XLSX.utils.json_to_sheet(dataToExcel);
+
+      // Lebar kolom otomatis agar rapi saat dibuka di MS Excel
+      const colWidths = [
+        { wch: 18 }, // ID Transaksi
+        { wch: 20 }, // Tanggal & Waktu
+        { wch: 15 }, // Kasir
+        { wch: 25 }, // Nama Barang
+        { wch: 16 }, // Harga Satuan
+        { wch: 12 }, // Jumlah (Pcs)
+        { wch: 16 }, // Subtotal Item
+        { wch: 16 }, // Total Belanja
+        { wch: 16 }, // Jumlah Bayar
+        { wch: 15 }, // Kembalian
+        { wch: 16 }  // Sisa stok barang
+      ];
+      worksheet['!cols'] = colWidths;
+
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Penjualan");
-      XLSX.writeFile(workbook, `Laporan_Penjualan_${currentFilter.toUpperCase()}.xlsx`);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Penjualan Rinci");
+      XLSX.writeFile(workbook, `Laporan_Penjualan_Terperinci_${currentFilter.toUpperCase()}.xlsx`);
     }
 
     // FUNGSI BARU: Export Data Stok ke Excel
