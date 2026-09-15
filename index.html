@@ -393,7 +393,7 @@
   <!-- Template Cetak Struk (Tampil hanya saat Print) -->
   <div id="receipt-print" class="hidden">
     <div style="text-align: center; margin-bottom: 10px;">
-      <h2 style="margin: 0; font-size: 16px; font-weight: bold;" id="rc-shop-name">BORNEO SYNEGRI GROUP</h2>
+      <h2 style="margin: 0; font-size: 16px; font-weight: bold;" id="rc-shop-name">BSG -POS TRANSAKSI</h2>
       <p style="margin: 2px 0; font-size: 11px;" id="rc-shop-address">Bukti pembayaran resmi pembelanjaan</p>
       <p style="margin: 2px 0; font-size: 11px;">Telp/WA: 0896-9437-3718</p>
     </div>
@@ -869,7 +869,7 @@ let chartTopSales = null;
       msg += `Bayar: Rp ${trx.pay.toLocaleString('id-ID')}\n`;
       msg += `Kembalian: Rp ${trx.change.toLocaleString('id-ID')}\n`;
       msg += `--------------------------------\n`;
-      msg += `_Terima kasih telah berbelanja di Toko Sembako Putri!_ 🙏`;
+      msg += `_Terima kasih telah berbelanja_ 🙏`;
 
       let formattedPhone = phoneInput.replace(/\D/g, '');
       if (formattedPhone.startsWith('0')) {
